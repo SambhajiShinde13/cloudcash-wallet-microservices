@@ -1,0 +1,39 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway-service
+
+  cloud:
+    gateway:
+      default-filters:
+        - name: RequestRateLimiter
+          args:
+            redis-rate-limiter.replenishRate: 10
+            redis-rate-limiter.burstCapacity: 20
+            key-resolver: "#{@ipKeyResolver}"
+
+      routes:
+        - id: user-service
+          uri: http://localhost:8081
+          predicates:
+            - Path=/api/**
+        #transaction- Microservice
+        - id: transaction-service
+          uri: http://localhost:8082
+          predicates:
+            - Path=/api/transaction/**
+
+        #notification_service
+        - id: notification_service
+          uri: http://localhost:8084
+          predicates:
+            - Path=/api/notifications/**
+        #Reward Service
+        - id: reward-service
+          uri: http://localhost:8085
+          predicates:
+            - Path=/api/reward/**
+
+
