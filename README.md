@@ -44,7 +44,10 @@ This project answers all three — using Apache Kafka for async event processing
 
 ## 🏗️ Architecture
 
-> 💡 **Tip**: For a visual diagram, see [`docs/cloudcash-architecture.png`](docs/cloudcash-architecture.png) *(create yours free at [draw.io](https://draw.io) and export as PNG)*
+<p align="center">
+  <img src="docs/cloudcash-architecture.png" width="900">
+</p>
+
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
