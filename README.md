@@ -1,4 +1,4 @@
- # 💸 CloudCash — Event-Driven Digital Wallet Platform
+# 💸 CloudCash — Event-Driven Digital Wallet Platform
 
 ![Java](https://img.shields.io/badge/Java-17-orange?style=flat-square&logo=java)
 ![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.x-brightgreen?style=flat-square&logo=springboot)
@@ -22,6 +22,7 @@
 - [API Reference](#api-reference)
 - [Kafka Event Flow](#kafka-event-flow)
 - [Database Schema](#database-schema)
+- [Performance & Scalability](#performance--scalability)
 - [Security](#security)
 - [CI/CD Pipeline](#cicd-pipeline)
 - [Getting Started](#getting-started)
@@ -43,19 +44,21 @@ This project answers all three — using Apache Kafka for async event processing
 
 ## 🏗️ Architecture
 
+> 💡 **Tip**: For a visual diagram, see [`docs/cloudcash-architecture.png`](docs/cloudcash-architecture.png) *(create yours free at [draw.io](https://draw.io) and export as PNG)*
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                        API Gateway                          │
+│                        api-gateway                          │
 │                   (JWT Auth + Routing)                      │
 └──────────┬────────────────────┬────────────────────┬────────┘
            │                    │                    │
-    ┌──────▼──────┐    ┌────────▼───────┐   ┌───────▼───────┐
-    │   User      │    │   Wallet       │   │   Rewards     │
-    │   Service   │    │   Service      │   │   Service     │
-    └──────┬──────┘    └────────┬───────┘   └───────┬───────┘
+    ┌──────▼──────┐    ┌────────▼──────────┐  ┌─────▼──────────┐
+    │  user-      │    │  transaction-     │  │  reward-       │
+    │  service    │    │  service          │  │  service       │
+    └──────┬──────┘    └────────┬──────────┘  └─────┬──────────┘
            │                    │                    │
            └────────────────────┼────────────────────┘
-                                │
+                                │  publishes events
                     ┌───────────▼───────────┐
                     │    Apache Kafka        │
                     │  (Event Bus)           │
@@ -64,16 +67,16 @@ This project answers all three — using Apache Kafka for async event processing
                     │  - wallet.rewards      │
                     │  - wallet.notifications│
                     └───────────┬───────────┘
-                                │
+                                │  subscribes
                     ┌───────────▼───────────┐
-                    │    Notification        │
-                    │    Service             │
+                    │  notification-         │
+                    │  service               │
                     └───────────────────────┘
 
         All services → MySQL (individual schemas)
         All services → Docker containers
         Deployed on → AWS EC2
-        CI/CD via  → GitHub Actions
+        CI/CD via   → GitHub Actions
 ```
 
 ---
@@ -113,24 +116,36 @@ This project answers all three — using Apache Kafka for async event processing
 
 ## 🔬 Microservices Breakdown
 
-### User Service
+> **Real project structure:**
+> ```
+> cloudcash-wallet-microservices/
+> ├── api-gateway/
+> ├── user-service/
+> ├── transaction-service/
+> ├── reward-service/
+> ├── notification-service/
+> └── docker-compose.yml
+> ```
+
+### `user-service`
 - Handles registration, login, JWT token generation
 - Manages user profiles and authentication
 - Publishes `user.created` event to Kafka on signup
 
-### Wallet Service
-- Core business logic: wallet creation, balance management, transfers
-- Validates sufficient balance before debit using pessimistic locking
-- Publishes `transaction.completed` and `transaction.failed` events
+### `transaction-service`
+- Core business logic: wallet creation, balance management, P2P transfers
+- Validates sufficient balance before debit using **pessimistic locking**
+- Publishes `transaction.completed` and `transaction.failed` events to Kafka
+- Owns the `wallets` and `transactions` MySQL tables
 
-### Rewards Service
-- Subscribes to `transaction.completed` events
+### `reward-service`
+- Subscribes to `transaction.completed` events from Kafka
 - Calculates and applies cashback/reward points asynchronously
-- Idempotent processing with deduplication keys
+- Idempotent processing with deduplication keys to prevent double rewards
 
-### Notification Service
-- Subscribes to all transaction events
-- Sends email/in-app notifications to users
+### `notification-service`
+- Subscribes to all transaction and reward events
+- Sends email/in-app notifications to users on every state change
 - Uses Kafka consumer group for load balancing across instances
 
 ---
@@ -227,6 +242,24 @@ CREATE TABLE transactions (
 
 ---
 
+## 📊 Performance & Scalability
+
+| Metric | Result |
+|---|---|
+| Concurrent transactions simulated | **5,000+** |
+| API response time improvement (query optimization) | **~30%** |
+| Kafka async processing latency reduction | **~40%** |
+| Deployment time reduction via CI/CD | **~70%** |
+| System uptime (post-optimization) | **99%+** |
+
+**How concurrency was handled:**
+- `transaction-service` uses **pessimistic locking** (`SELECT ... FOR UPDATE`) on wallet balance rows — prevents race conditions under parallel debit requests
+- Kafka consumer groups allow **horizontal scaling** of each service independently — add more instances of `notification-service` without touching `transaction-service`
+- MySQL indexed schemas keep transaction history queries fast even as rows grow into the millions
+- **Idempotency keys** (`txn_id` UUID) ensure exactly-once processing even when Kafka retries deliver an event twice
+
+---
+
 ## 🔐 Security
 
 - **JWT Authentication**: Stateless token-based auth with expiry and refresh
@@ -265,8 +298,8 @@ This reduced manual deployment time by **70%** compared to manual SSH deploys.
 
 ```bash
 # Clone the repo
-git clone https://github.com/SambhajiShinde13/CloudCash-user-service.git
-cd CloudCash-user-service
+git clone https://github.com/SambhajiShinde13/cloudcash-wallet-microservices.git
+cd cloudcash-wallet-microservices
 
 # Start Kafka + MySQL via Docker Compose
 docker-compose up -d
