@@ -1,189 +1,307 @@
-CloudCash — Event-Driven Digital Wallet Platform (Microservices)
+ # 💸 CloudCash — Event-Driven Digital Wallet Platform
 
-A production-oriented, event-driven digital wallet platform built using
-Spring Boot microservices, Apache Kafka, and MySQL — designed to handle
-high-concurrency financial transactions with strong consistency,
-idempotency, and fault tolerance.
+![Java](https://img.shields.io/badge/Java-17-orange?style=flat-square&logo=java)
+![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.x-brightgreen?style=flat-square&logo=springboot)
+![Apache Kafka](https://img.shields.io/badge/Apache_Kafka-Event--Driven-black?style=flat-square&logo=apachekafka)
+![MySQL](https://img.shields.io/badge/MySQL-8.0-blue?style=flat-square&logo=mysql)
+![Docker](https://img.shields.io/badge/Docker-Containerized-blue?style=flat-square&logo=docker)
+![AWS](https://img.shields.io/badge/AWS-EC2-orange?style=flat-square&logo=amazonaws)
+![CI/CD](https://img.shields.io/badge/CI/CD-GitHub_Actions-black?style=flat-square&logo=githubactions)
 
-=====================================================================
-OVERVIEW
-=====================================================================
+> A production-grade, microservices-based digital wallet platform built for high-concurrency financial operations — featuring event-driven transaction processing via Apache Kafka, JWT-secured APIs, and fully automated CI/CD deployment on AWS.
 
-CloudCash is a distributed digital wallet system that supports:
+---
 
--   Wallet creation & management
--   Peer-to-peer transfers
--   Reward processing
--   Transaction history tracking
--   Event-driven notifications
+## 📌 Table of Contents
 
-Key backend challenges solved: - Prevent double spending during
-concurrent transfers - Ensure idempotent transaction processing -
-Decouple services using asynchronous communication - Handle failure
-without system-wide impact
+- [Overview](#overview)
+- [Architecture](#architecture)
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Microservices Breakdown](#microservices-breakdown)
+- [API Reference](#api-reference)
+- [Kafka Event Flow](#kafka-event-flow)
+- [Database Schema](#database-schema)
+- [Security](#security)
+- [CI/CD Pipeline](#cicd-pipeline)
+- [Getting Started](#getting-started)
+- [What I Learned](#what-i-learned)
 
-=====================================================================
-SYSTEM ARCHITECTURE
-=====================================================================
+---
 
-API Gateway (JWT Auth + Routing) | |—- User Service |—- Transaction
-Service |—- Reward Service |—- Notification Service | —> Apache Kafka
-(Event Bus)
+## 🧩 Overview
 
-Each service uses an independent MySQL schema. All services are
-containerized using Docker. Deployment: AWS EC2 CI/CD: GitHub Actions
+CloudCash is a **distributed digital wallet system** designed to handle peer-to-peer transfers, wallet management, and rewards processing at scale. The platform was built to solve real-world problems in fintech:
 
-=====================================================================
-MICROSERVICES BREAKDOWN
-=====================================================================
+- How do you process thousands of concurrent transactions **without data inconsistency**?
+- How do you **decouple services** so one failure doesn't bring down the whole system?
+- How do you ensure **exactly-once processing** in an event-driven architecture?
 
-1.  API Gateway
+This project answers all three — using Apache Kafka for async event processing, normalized MySQL schemas with ACID transactions, and a microservices architecture with independent deployability.
 
--   Central entry point
--   JWT validation filter
--   Rate limiting
--   Routes requests to internal services
+---
 
-2.  User Service
+## 🏗️ Architecture
 
--   User registration & authentication
--   BCrypt password hashing
--   JWT token generation
--   Role-Based Access Control (RBAC)
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        API Gateway                          │
+│                   (JWT Auth + Routing)                      │
+└──────────┬────────────────────┬────────────────────┬────────┘
+           │                    │                    │
+    ┌──────▼──────┐    ┌────────▼───────┐   ┌───────▼───────┐
+    │   User      │    │   Wallet       │   │   Rewards     │
+    │   Service   │    │   Service      │   │   Service     │
+    └──────┬──────┘    └────────┬───────┘   └───────┬───────┘
+           │                    │                    │
+           └────────────────────┼────────────────────┘
+                                │
+                    ┌───────────▼───────────┐
+                    │    Apache Kafka        │
+                    │  (Event Bus)           │
+                    │  Topics:               │
+                    │  - wallet.transactions │
+                    │  - wallet.rewards      │
+                    │  - wallet.notifications│
+                    └───────────┬───────────┘
+                                │
+                    ┌───────────▼───────────┐
+                    │    Notification        │
+                    │    Service             │
+                    └───────────────────────┘
 
-3.  Transaction Service
+        All services → MySQL (individual schemas)
+        All services → Docker containers
+        Deployed on → AWS EC2
+        CI/CD via  → GitHub Actions
+```
 
--   Wallet balance validation
--   Peer-to-peer transfer handling
--   ACID transaction management
--   Publishes transaction.completed and transaction.failed events
+---
 
-Concurrency Handling: - Pessimistic locking - Unique transaction ID
-(idempotency key) - Database constraints to prevent duplicates
+## ✅ Features
 
-4.  Reward Service
+| Feature | Description |
+|---|---|
+| 💼 Wallet Management | Create, view, and manage digital wallets per user |
+| 💸 Peer-to-Peer Transfers | Real-time money transfers between wallets |
+| 🎁 Rewards Processing | Cashback and rewards applied via Kafka events |
+| 📜 Transaction History | Paginated, filterable transaction logs |
+| 🔐 JWT Auth + RBAC | Secure endpoints with role-based access control |
+| ⚡ Kafka Event Processing | Async, decoupled transaction events with retry |
+| 🐳 Dockerized Deployment | All services containerized for easy deployment |
+| 🔄 CI/CD Automation | Auto-deploy to AWS EC2 on every push to main |
 
--   Consumes transaction.completed events
--   Calculates cashback/reward points
--   Idempotent event processing
+---
 
-5.  Notification Service
+## 🛠️ Tech Stack
 
--   Consumes transaction & reward events
--   Sends asynchronous notifications
--   Scales independently via Kafka consumer groups
+| Layer | Technology |
+|---|---|
+| Language | Java 17 |
+| Framework | Spring Boot 3.x, Spring MVC |
+| Security | Spring Security, JWT, RBAC |
+| Message Broker | Apache Kafka (Consumer Groups, Retry, DLQ) |
+| Database | MySQL 8.0 (ACID, Indexed Schemas) |
+| ORM | Spring Data JPA, Hibernate |
+| Containerization | Docker, Docker Compose |
+| CI/CD | GitHub Actions |
+| Cloud | AWS EC2 |
+| Testing | JUnit, Mockito |
+| Logging | SLF4J, Logback |
 
-=====================================================================
-KAFKA EVENT FLOW
-=====================================================================
+---
 
-Client → API Gateway → Transaction Service → DB Transaction (Debit +
-Credit) → Publish to wallet.transactions topic → Reward Service +
-Notification Service consume
+## 🔬 Microservices Breakdown
 
-Kafka Design Decisions: - Consumer groups for horizontal scaling - Retry
-mechanism with exponential backoff - Dead Letter Queue (DLQ) -
-Idempotent processing using transaction IDs
+### User Service
+- Handles registration, login, JWT token generation
+- Manages user profiles and authentication
+- Publishes `user.created` event to Kafka on signup
 
-=====================================================================
-SECURITY MODEL
-=====================================================================
+### Wallet Service
+- Core business logic: wallet creation, balance management, transfers
+- Validates sufficient balance before debit using pessimistic locking
+- Publishes `transaction.completed` and `transaction.failed` events
 
--   JWT-based stateless authentication
--   RBAC (ROLE_USER, ROLE_ADMIN)
--   BCrypt password hashing
--   Global exception handling
--   Input validation using Bean Validation
+### Rewards Service
+- Subscribes to `transaction.completed` events
+- Calculates and applies cashback/reward points asynchronously
+- Idempotent processing with deduplication keys
 
-=====================================================================
-DATABASE DESIGN
-=====================================================================
+### Notification Service
+- Subscribes to all transaction events
+- Sends email/in-app notifications to users
+- Uses Kafka consumer group for load balancing across instances
 
-Wallet Table: - id (PK) - user_id (Unique) - balance (DECIMAL) - status
-(ACTIVE/FROZEN/CLOSED) - created_at
+---
 
-Transaction Table: - id (PK) - txn_id (Unique) - sender_wallet -
-receiver_wallet - amount - status - created_at
+## 📡 API Reference
 
-Design Considerations: - Indexed frequently queried columns - Unique
-transaction ID for idempotency - ACID-compliant operations - Pessimistic
-locking to prevent race conditions
+### Auth APIs
+```
+POST   /api/auth/register          → Register new user
+POST   /api/auth/login             → Login and get JWT token
+```
 
-=====================================================================
-PERFORMANCE & SCALABILITY
-=====================================================================
+### Wallet APIs
+```
+POST   /api/wallet/create          → Create wallet for user
+GET    /api/wallet/{walletId}      → Get wallet details + balance
+GET    /api/wallet/all             → Get all wallets (ADMIN only)
+```
 
--   Simulated 5,000+ concurrent transactions
--   Reduced API latency ~40% using async Kafka processing
--   Improved DB performance ~30% via indexing
--   Horizontal scaling tested with multiple Kafka consumers
--   Decoupled services reduce cascading failures
+### Transaction APIs
+```
+POST   /api/transaction/transfer   → Initiate P2P transfer
+GET    /api/transaction/history    → Get paginated transaction history
+GET    /api/transaction/{txnId}    → Get specific transaction details
+```
 
-=====================================================================
-CI/CD & DEPLOYMENT
-=====================================================================
+### Rewards APIs
+```
+GET    /api/rewards/balance        → Get current rewards/cashback balance
+GET    /api/rewards/history        → Get rewards transaction history
+```
 
-Pipeline Steps: 1. Code checkout 2. Maven build + unit tests 3. Docker
-image build 4. Push image to Docker Hub 5. SSH into AWS EC2 6. Pull
-latest image 7. Restart containers 8. Health check validation
+---
 
-Deployment time reduced by ~70% compared to manual deployment.
+## 📨 Kafka Event Flow
 
-=====================================================================
-API REFERENCE
-=====================================================================
+```
+User initiates Transfer
+        │
+        ▼
+Wallet Service validates balance
+        │
+        ▼
+Debit sender + Credit receiver (DB Transaction - ACID)
+        │
+        ▼
+Publish → [wallet.transactions] topic
+        │
+    ┌───┴────────────────────┐
+    ▼                        ▼
+Rewards Service          Notification Service
+(Apply cashback)         (Send confirmation)
+    │
+    ▼
+Publish → [wallet.rewards] topic
+```
 
-Auth APIs: POST /api/auth/register POST /api/auth/login
+**Key Kafka Design Decisions:**
+- **Consumer Groups**: Each service has its own consumer group — independent scaling
+- **Retry Mechanism**: Failed events retry 3 times with exponential backoff
+- **Dead Letter Queue (DLQ)**: Permanently failed events sent to DLQ for manual review
+- **Idempotency**: Transaction IDs prevent duplicate processing on redelivery
 
-Transaction APIs: POST /api/transaction/transfer GET
-/api/transaction/history GET /api/transaction/{txnId}
+---
 
-Reward APIs: GET /api/rewards/balance GET /api/rewards/history
+## 🗄️ Database Schema
 
-=====================================================================
-GETTING STARTED
-=====================================================================
+```sql
+-- Wallets Table
+CREATE TABLE wallets (
+    id          BIGINT PRIMARY KEY AUTO_INCREMENT,
+    user_id     BIGINT NOT NULL UNIQUE,
+    balance     DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+    currency    VARCHAR(10) DEFAULT 'INR',
+    status      ENUM('ACTIVE', 'FROZEN', 'CLOSED'),
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_user_id (user_id)
+);
 
-Prerequisites: - Java 17+ - Docker - Docker Compose - Apache Kafka -
-MySQL 8+
+-- Transactions Table
+CREATE TABLE transactions (
+    id              BIGINT PRIMARY KEY AUTO_INCREMENT,
+    txn_id          VARCHAR(36) NOT NULL UNIQUE,  -- idempotency key
+    sender_wallet   BIGINT NOT NULL,
+    receiver_wallet BIGINT NOT NULL,
+    amount          DECIMAL(15,2) NOT NULL,
+    status          ENUM('PENDING', 'SUCCESS', 'FAILED'),
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_sender   (sender_wallet),
+    INDEX idx_receiver (receiver_wallet),
+    INDEX idx_txn_id   (txn_id)
+);
+```
 
-Clone Repository: git clone
-https://github.com/SambhajiShinde13/cloudcash-wallet-microservices.git
-cd cloudcash-wallet-microservices
+---
 
-Start Dependencies: docker-compose up -d
+## 🔐 Security
 
-Run Services: ./mvnw spring-boot:run
+- **JWT Authentication**: Stateless token-based auth with expiry and refresh
+- **RBAC**: Role-based access — `ROLE_USER`, `ROLE_ADMIN`
+- **Password Hashing**: BCrypt with salt rounds
+- **Input Validation**: Bean Validation on all request DTOs
+- **Exception Handling**: Global handler — no stack traces exposed to client
 
-=====================================================================
-DESIGN DECISIONS & TRADEOFFS
-=====================================================================
+---
 
-Why Pessimistic Locking? Optimistic locking caused balance
-inconsistencies under high concurrency. Pessimistic locking ensured safe
-debit-credit operations.
+## 🔄 CI/CD Pipeline
 
-Why Event-Driven Architecture? - Reduced coupling - Improved
-scalability - Failure isolation - Async reward & notification processing
+```yaml
+# On push to main branch:
+1. Code checkout
+2. Maven build + run unit tests (JUnit + Mockito)
+3. Docker image build
+4. Push image to Docker Hub
+5. SSH into AWS EC2
+6. Pull latest image + restart container
+7. Health check verification
+```
 
-Why Unique Transaction ID? Kafka retries can reprocess events. Unique
-txn_id prevents duplicate credits.
+This reduced manual deployment time by **70%** compared to manual SSH deploys.
 
-=====================================================================
-KEY LEARNINGS
-=====================================================================
+---
 
--   Idempotency is mandatory in financial systems
--   ACID boundaries must be clearly defined
--   DLQ strategy is essential in event-driven systems
--   Distributed systems fail — design for failure
--   CI/CD is critical for production reliability
+## 🚀 Getting Started
 
-=====================================================================
-AUTHOR
-=====================================================================
+### Prerequisites
+- Java 17+
+- Docker & Docker Compose
+- Apache Kafka (or use Docker Compose setup below)
 
-Sambhaji Shinde Java Backend Engineer Pune, India
+### Run Locally
 
-LinkedIn: https://linkedin.com/in/sambhajishinde13 GitHub:
-https://github.com/SambhajiShinde13
+```bash
+# Clone the repo
+git clone https://github.com/SambhajiShinde13/CloudCash-user-service.git
+cd CloudCash-user-service
+
+# Start Kafka + MySQL via Docker Compose
+docker-compose up -d
+
+# Run the service
+./mvnw spring-boot:run
+```
+
+### Environment Variables
+```env
+DB_HOST=localhost
+DB_PORT=3306
+DB_NAME=cloudcash
+DB_USER=root
+DB_PASSWORD=yourpassword
+KAFKA_BOOTSTRAP_SERVERS=localhost:9092
+JWT_SECRET=your_jwt_secret_key
+JWT_EXPIRY=86400000
+```
+
+---
+
+## 💡 What I Learned
+
+Building CloudCash taught me several real-world distributed systems lessons:
+
+1. **Idempotency is not optional** — Without deduplication keys, Kafka retries caused duplicate credits. Fixed with unique `txn_id` constraints.
+2. **Pessimistic locking for financial operations** — Optimistic locking caused race conditions under concurrent transfers. Pessimistic locking on wallet balance solved it.
+3. **Dead Letter Queues save production** — Events that fail repeatedly need a place to go, not infinite retries that block the partition.
+4. **Environment-based config** — Hardcoded values in Docker images burned me once. Spring profiles + env vars solved it cleanly.
+
+---
+
+## 📬 Contact
+
+**Sambhaji Shinde** — Java Backend Engineer  
+📧 sambhajishinde4454@gmail.com  
+🔗 [LinkedIn](https://linkedin.com/in/sambhajishinde13) | [GitHub](https://github.com/SambhajiShinde13)
